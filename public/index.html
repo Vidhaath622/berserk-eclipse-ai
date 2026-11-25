@@ -126,10 +126,15 @@
           </button>
         </div>
 
-        <div id="sidebar-key-badge" class="key-status-badge" role="status" aria-live="polite">
+        <button
+          id="sidebar-key-badge"
+          type="button"
+          class="key-status-badge"
+          title="Click to enter or update your Groq API key"
+        >
           <span id="sidebar-key-dot" class="status-dot"></span>
-          <span id="sidebar-key-text" class="key-status-label">Checking .env Seal…</span>
-        </div>
+          <span id="sidebar-key-text" class="key-status-label">Checking Groq Seal…</span>
+        </button>
       </div>
     </aside>
 
@@ -190,6 +195,18 @@
           </button>
 
           <button
+            id="open-key-settings-btn"
+            type="button"
+            class="pill-btn key-header-btn"
+            title="Enter or update your Groq API Key"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path>
+            </svg>
+            <span id="header-key-label">API Key</span>
+          </button>
+
+          <button
             id="open-settings-btn"
             type="button"
             class="icon-btn settings-trigger-btn"
@@ -205,24 +222,43 @@
         </div>
       </header>
 
-      <!-- Atmospheric Missing / Rejected .env API Key Banner -->
-      <section id="api-key-banner" class="seal-banner" role="alert" hidden>
+      <!-- Atmospheric In-App Groq API Key Setup Banner -->
+      <section id="api-key-banner" class="seal-banner" role="region" aria-label="Groq API Key Setup" hidden>
         <div class="seal-banner-icon" aria-hidden="true">
           <svg width="24" height="30"><use href="#icon-brand"></use></svg>
         </div>
         <div class="seal-banner-body">
           <h2 id="api-key-banner-title" class="seal-banner-title">
-            Astral Seal Unbound — Missing Groq API Key
+            Astral Seal Unbound — Enter Your Groq API Key
           </h2>
           <p id="api-key-banner-desc" class="seal-banner-text">
-            Open your local <code>.env</code> file in the project root, paste your Groq key on the line below, and restart the server (<code>npm start</code>):
+            Paste your Groq API key below to power the chatbot right in your browser (stored locally on your device), or create a free key at
+            <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer">console.groq.com/keys</a>:
           </p>
-          <div class="seal-snippet-row">
-            <code id="api-key-banner-snippet" class="seal-code-snippet">.env → paste your Groq API key</code>
-            <button id="recheck-key-btn" type="button" class="btn-secondary-sm">
-              Re-check Seal
+          <form id="banner-key-form" class="seal-key-form">
+            <div class="key-input-wrap">
+              <input
+                id="banner-key-input"
+                type="password"
+                class="seal-key-input"
+                placeholder="Paste Groq API key (gsk_...)"
+                autocomplete="off"
+                spellcheck="false"
+                aria-label="Groq API Key"
+              />
+              <button
+                id="banner-key-toggle-vis"
+                type="button"
+                class="key-vis-btn"
+                aria-label="Show or hide API key"
+              >
+                Show
+              </button>
+            </div>
+            <button id="banner-key-save-btn" type="submit" class="btn-primary seal-bind-btn">
+              Bind Seal
             </button>
-          </div>
+          </form>
         </div>
       </section>
 
@@ -348,6 +384,42 @@
     </div>
 
     <form id="settings-form" class="drawer-body">
+      <div class="field-section">
+        <div class="label-row">
+          <h3 class="section-eyebrow">Astral Seal (Groq API Key)</h3>
+          <span id="setting-key-status-pill" class="value-readout">Unbound</span>
+        </div>
+        <div class="field-group">
+          <label for="setting-api-key">Groq API Key (saved locally in your browser)</label>
+          <div class="key-input-wrap">
+            <input
+              id="setting-api-key"
+              type="password"
+              placeholder="Paste gsk_... key here"
+              autocomplete="off"
+              spellcheck="false"
+            />
+            <button
+              id="setting-key-toggle-vis"
+              type="button"
+              class="key-vis-btn"
+              aria-label="Show or hide API key"
+            >
+              Show
+            </button>
+          </div>
+          <div class="key-helper-row">
+            <span class="field-hint">
+              Get a free key at
+              <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer" class="inline-crimson-link">console.groq.com/keys</a>
+            </span>
+            <button id="setting-clear-key-btn" type="button" class="btn-clear-key" hidden>
+              Clear Saved Key
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div class="field-section">
         <h3 class="section-eyebrow">Identity</h3>
         <div class="field-grid-2">

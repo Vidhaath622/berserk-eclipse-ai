@@ -1,15 +1,25 @@
 /**
  * Frontend API Client for /api/health, /api/models, and SSE /api/chat
- * Communicates strictly with the local Express server—no secrets in the browser.
+ * Forwards an optional user-supplied Groq API key securely via request header
+ * (falling back to server .env when omitted).
  */
 
 import { FALLBACK_MODELS } from './config.js';
 
-export async function fetchHealth() {
+function buildKeyHeaders(apiKey, extra = {}) {
+  const headers = { ...extra };
+  const cleanKey = String(apiKey || '').trim();
+  if (cleanKey) {
+    headers['X-Groq-Api-Key'] = cleanKey;
+  }
+  return headers;
+}
+
+export async function fetchHealth(apiKey = '') {
   try {
     const res = await fetch('/api/health', {
       method: 'GET',
-      headers: { Accept: 'application/json' },
+      headers: buildKeyHeaders(apiKey, { Accept: 'application/json' }),
       cache: 'no-store'
     });
     if (!res.ok) {
@@ -20,16 +30,18 @@ export async function fetchHealth() {
     return {
       ok: false,
       groqKeyConfigured: false,
+      serverKeyConfigured: false,
+      keySource: 'none',
       error: err.message || 'Unable to reach server health endpoint.'
     };
   }
 }
 
-export async function fetchModels() {
+export async function fetchModels(apiKey = '') {
   try {
     const res = await fetch('/api/models', {
       method: 'GET',
-      headers: { Accept: 'application/json' },
+      headers: buildKeyHeaders(apiKey, { Accept: 'application/json' }),
       cache: 'no-store'
     });
     if (!res.ok) {
@@ -39,16 +51,18 @@ export async function fetchModels() {
     return {
       models: Array.isArray(data.models) && data.models.length > 0 ? data.models : FALLBACK_MODELS,
       keyConfigured: Boolean(data.keyConfigured),
+      keyRejected: Boolean(data.keyRejected),
+      keySource: data.keySource || 'none',
       defaultModel: data.defaultModel || FALLBACK_MODELS[0].id,
-      setupExample: data.setupExample || '',
       warning: data.warning || null
     };
   } catch {
     return {
       models: FALLBACK_MODELS,
       keyConfigured: false,
+      keyRejected: false,
+      keySource: 'none',
       defaultModel: FALLBACK_MODELS[0].id,
-      setupExample: '',
       warning: 'Using local fallback model catalog.'
     };
   }
@@ -63,6 +77,7 @@ export async function streamChat({
   temperature,
   maxTokens,
   systemPrompt,
+  apiKey = '',
   signal,
   onToken,
   onMeta,
@@ -72,10 +87,10 @@ export async function streamChat({
 
   const response = await fetch('/api/chat', {
     method: 'POST',
-    headers: {
+    headers: buildKeyHeaders(apiKey, {
       'Content-Type': 'application/json',
       Accept: 'text/event-stream'
-    },
+    }),
     body: JSON.stringify({
       messages,
       model,
@@ -99,7 +114,6 @@ export async function streamChat({
     err.status = response.status;
     err.code = payload?.code || `HTTP_${response.status}`;
     err.keyMissing = Boolean(payload?.keyMissing || response.status === 401);
-    err.setupExample = payload?.setupExample || '';
     throw err;
   }
 
@@ -160,7 +174,6 @@ export async function streamChat({
           const streamErr = new Error(parsed.error || 'Stream interrupted by upstream error.');
           streamErr.code = parsed.code || 'STREAM_ERROR';
           streamErr.keyMissing = Boolean(parsed.keyMissing);
-          streamErr.setupExample = parsed.setupExample || '';
           throw streamErr;
         }
       }

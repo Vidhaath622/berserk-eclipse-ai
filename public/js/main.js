@@ -1,7 +1,7 @@
 /**
  * Main Application Bootstrap
  * Connects 3D Berserk WebGL Scene, LocalStorage Store, Settings Drawer,
- * UI Controller, and Server-Side Groq SSE Endpoints.
+ * UI Controller, and Groq SSE Endpoints (using either user-entered API key or server .env).
  */
 
 import { store } from './state.js';
@@ -14,7 +14,8 @@ class BerserkChatbotApp {
   constructor() {
     this.activeAbortController = null;
     this.serverDefaultModel = store.getSettings().defaultModel;
-    this.keyConfigured = true;
+    this.keyConfigured = false;
+    this.keySource = 'none';
 
     const canvas = document.getElementById('berserk-canvas');
     this.scene3d = new BerserkScene3D(canvas);
@@ -27,18 +28,27 @@ class BerserkChatbotApp {
         onStopStream: () => this.stopStreaming(),
         onRegenerate: (assistantMsgId) => this.handleRegenerate(assistantMsgId),
         onEditAndResend: (userMsgId, newText) => this.handleEditAndResend(userMsgId, newText),
-        onRecheckKey: () => this.refreshServerStatus()
+        onSubmitApiKey: async (rawKey) => {
+          store.setUserApiKey(rawKey);
+          await this.refreshServerStatus({ announceSuccess: true });
+        }
       }
     });
 
     this.settingsController = new SettingsController({
       store,
       onAtmospherePreview: (level) => this.scene3d.setAtmosphere(level),
+      onApiKeyChanged: async (nextKey) => {
+        await this.refreshServerStatus({ announceSuccess: Boolean(nextKey) });
+      },
       getServerDefaultModel: () => this.serverDefaultModel
     });
 
     store.subscribe((_store, reason) => {
       this.scene3d.setAtmosphere(store.getSettings().atmosphere);
+      if (reason === 'apikey') {
+        return;
+      }
       if (reason === 'settings') {
         this.ui.syncLayoutAndIdentity();
         this.ui.renderMessages();
@@ -52,8 +62,12 @@ class BerserkChatbotApp {
     this.refreshServerStatus();
   }
 
-  async refreshServerStatus() {
-    const [health, modelResult] = await Promise.all([fetchHealth(), fetchModels()]);
+  async refreshServerStatus({ announceSuccess = false } = {}) {
+    const userKey = store.getUserApiKey();
+    const [health, modelResult] = await Promise.all([
+      fetchHealth(userKey),
+      fetchModels(userKey)
+    ]);
 
     if (health.defaultModel) {
       this.serverDefaultModel = health.defaultModel;
@@ -62,17 +76,31 @@ class BerserkChatbotApp {
     this.ui.setModels(modelResult.models);
 
     const configured = Boolean(health.groqKeyConfigured && modelResult.keyConfigured);
-    const rejected = Boolean(health.groqKeyConfigured && !modelResult.keyConfigured);
+    const rejected = Boolean(modelResult.keyRejected);
+    const source = modelResult.keySource || health.keySource || 'none';
+
     this.keyConfigured = configured;
+    this.keySource = source;
 
     this.ui.updateKeyStatus({
       configured,
       rejected,
-      setupExample: health.setupExample || modelResult.setupExample || '',
+      source,
       message: rejected ? modelResult.warning : ''
     });
 
+    this.settingsController.setKeyStatusMeta({
+      configured,
+      rejected,
+      source
+    });
+
     this.scene3d.setState(configured ? 'idle' : 'error');
+
+    if (announceSuccess && configured && !rejected) {
+      this.ui.showTransientHint('Astral Seal Bound — Groq API key verified!');
+      this.ui.promptInput?.focus();
+    }
   }
 
   async handleSendPrompt(promptText) {
@@ -115,6 +143,7 @@ class BerserkChatbotApp {
 
     const settings = store.getSettings();
     const model = store.getEffectiveModel();
+    const userApiKey = store.getUserApiKey();
 
     // Collect conversation history excluding trailing empty/error assistant stubs
     const contextMessages = session.messages
@@ -147,6 +176,7 @@ class BerserkChatbotApp {
         temperature: settings.temperature,
         maxTokens: settings.maxTokens,
         systemPrompt: settings.systemPrompt,
+        apiKey: userApiKey,
         signal: this.activeAbortController.signal,
         onToken: (delta) => {
           accumulated += delta;
@@ -196,7 +226,9 @@ class BerserkChatbotApp {
       });
 
       this.keyConfigured = true;
-      this.ui.updateKeyStatus({ configured: true });
+      const activeSource = userApiKey ? 'browser' : this.keySource || 'server';
+      this.ui.updateKeyStatus({ configured: true, source: activeSource });
+      this.settingsController.setKeyStatusMeta({ configured: true, source: activeSource });
       this.scene3d.setState('idle');
     } catch (err) {
       if (err?.name === 'AbortError') {
@@ -225,12 +257,18 @@ class BerserkChatbotApp {
         });
 
         if (err.keyMissing || err.status === 401) {
+          const rejected = err.code === 'INVALID_API_KEY';
           this.keyConfigured = false;
           this.ui.updateKeyStatus({
             configured: false,
-            rejected: err.code === 'INVALID_API_KEY',
-            setupExample: err.setupExample || '',
+            rejected,
+            source: userApiKey ? 'browser' : 'none',
             message: err.message
+          });
+          this.settingsController.setKeyStatusMeta({
+            configured: false,
+            rejected,
+            source: userApiKey ? 'browser' : 'none'
           });
           this.scene3d.setState('error');
         } else {

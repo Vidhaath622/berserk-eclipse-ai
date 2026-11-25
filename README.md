@@ -4,36 +4,36 @@ A fast, customizable daily-driver personal AI chatbot powered by the **Groq API*
 
 ---
 
-## Quickstart (3 Steps)
+## Using Your Groq API Key (Two Ways)
 
-### 1. Install Dependencies
-```bash
-npm install
-```
+### Option 1: Enter Your Key Directly in the Website UI (Recommended)
+1. Open the live app (or `http://localhost:3000`).
+2. Paste your Groq API key (`gsk_...` from https://console.groq.com/keys) into the **"Astral Seal Unbound"** banner or click **Set API Key / Customize** in the top-right header.
+3. Click **Bind Seal**. Your key is saved locally in your browser's `localStorage` (never included in exported `.md`/`.json` chronicles) and verified live against Groq.
 
-### 2. Add Your Groq API Key to `.env`
-Open `.env` in the project root and paste your Groq API key (from https://console.groq.com/keys):
-
+### Option 2: Local `.env` Server Fallback (Optional)
+For local self-hosting without entering a key in the browser, paste your key into `.env`:
 ```env
 GROQ_API_KEY=gsk_your_actual_groq_key_here
 GROQ_DEFAULT_MODEL=llama-3.3-70b-versatile
 PORT=3000
 ```
 
-> **Security Note:** `.env` is listed in `.gitignore` and read **exclusively on the Node.js server** (`server.js`). Your API key is never sent to or stored in the browser.
+---
 
-### 3. Start the Server
+## Local Development Quickstart
+
 ```bash
+npm install
 npm start
 ```
-*(Or run `npm run dev` to auto-restart on server file edits.)*
-
 Open **http://localhost:3000** in your browser.
 
 ---
 
 ## Key Features
 
+- **In-App Groq API Key Management:** Paste, mask/reveal, verify, or clear your Groq API key right inside the web app—with automatic `.env` fallback when self-hosted.
 - **Procedural 3D WebGL Scene (`public/js/scene3d.js`):**
   - Custom GLSL **Blood-Eclipse Corona** & rolling crimson astral mist backdrop
   - 3D forged-iron **Brand of Sacrifice** sigil whose crimson veins react to `idle`, `streaming`, and `error` states
@@ -50,29 +50,3 @@ Open **http://localhost:3000** in your browser.
   - Real-time SSE token streaming with **Stop** cancellation (`AbortController`)
   - Safe Markdown rendering + syntax-highlighted code blocks with one-click **Copy** buttons
   - Per-message **Copy Markdown**, **Regenerate**, and **Edit & Resend**
-
----
-
-## Project Structure
-
-```text
-.
-├── .env                  # Local Groq API key (gitignored)
-├── .env.example          # Template environment file
-├── .gitignore            # Protects .env and node_modules
-├── package.json          # Scripts & dependencies
-├── server.js             # Express backend (/api/chat, /api/models, /api/health, /vendor/*)
-└── public/
-    ├── index.html        # Semantic HTML5 shell & inline SVG emblems
-    ├── css/
-    │   └── styles.css    # Pure CSS3 Berserk obsidian/crimson theme
-    └── js/
-        ├── config.js     # Default bot identity, personas, & starter prompts
-        ├── state.js      # localStorage chronicle & settings store
-        ├── api.js        # SSE streaming client & API helpers
-        ├── markdown.js   # Safe Marked + Highlight.js renderer
-        ├── scene3d.js    # Procedural Three.js Eclipse, Brand, Sword, & Embers
-        ├── settings.js   # Customize & Settings drawer controller
-        ├── ui.js         # DOM rendering, smart scroll, & message actions
-        └── main.js       # Application bootstrap
-```

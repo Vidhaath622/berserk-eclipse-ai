@@ -1,7 +1,7 @@
 /**
  * Foreground DOM & Chat UI Controller
- * Renders chronicles sidebar, model selector, welcome state, streaming messages,
- * code copy buttons, inline prompt editing, export downloads, and smart auto-scroll.
+ * Renders chronicles sidebar, in-app Groq API key banner, model selector, welcome state,
+ * streaming messages, code copy buttons, inline prompt editing, exports, and smart scroll.
  */
 
 import { STARTER_PROMPTS } from './config.js';
@@ -37,6 +37,8 @@ export class ChatUI {
 
     this.sidebarKeyBadge = document.getElementById('sidebar-key-badge');
     this.sidebarKeyText = document.getElementById('sidebar-key-text');
+    this.openKeyHeaderBtn = document.getElementById('open-key-settings-btn');
+    this.headerKeyLabel = document.getElementById('header-key-label');
 
     this.headerBotName = document.getElementById('header-bot-name');
     this.headerBotSubtitle = document.getElementById('header-bot-subtitle');
@@ -48,8 +50,10 @@ export class ChatUI {
     this.keyBanner = document.getElementById('api-key-banner');
     this.keyBannerTitle = document.getElementById('api-key-banner-title');
     this.keyBannerDesc = document.getElementById('api-key-banner-desc');
-    this.keyBannerSnippet = document.getElementById('api-key-banner-snippet');
-    this.recheckKeyBtn = document.getElementById('recheck-key-btn');
+    this.bannerKeyForm = document.getElementById('banner-key-form');
+    this.bannerKeyInput = document.getElementById('banner-key-input');
+    this.bannerKeyToggleVis = document.getElementById('banner-key-toggle-vis');
+    this.bannerKeySaveBtn = document.getElementById('banner-key-save-btn');
 
     this.viewport = document.getElementById('chat-viewport');
     this.welcomeScreen = document.getElementById('welcome-screen');
@@ -202,9 +206,33 @@ export class ChatUI {
       this.store.cycleAtmosphere();
     });
 
-    // Re-check .env API Key
-    this.recheckKeyBtn?.addEventListener('click', () => {
-      this.callbacks.onRecheckKey?.();
+    // In-App Banner Groq API Key Input & Show/Hide Toggle
+    this.bannerKeyToggleVis?.addEventListener('click', () => {
+      if (!this.bannerKeyInput) return;
+      const isMasked = this.bannerKeyInput.type === 'password';
+      this.bannerKeyInput.type = isMasked ? 'text' : 'password';
+      this.bannerKeyToggleVis.textContent = isMasked ? 'Hide' : 'Show';
+    });
+
+    this.bannerKeyForm?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const rawKey = (this.bannerKeyInput?.value || '').trim();
+      if (!rawKey) {
+        this.bannerKeyInput?.focus();
+        return;
+      }
+      if (this.bannerKeySaveBtn) {
+        this.bannerKeySaveBtn.disabled = true;
+        this.bannerKeySaveBtn.textContent = 'Binding…';
+      }
+      try {
+        await this.callbacks.onSubmitApiKey?.(rawKey);
+      } finally {
+        if (this.bannerKeySaveBtn) {
+          this.bannerKeySaveBtn.disabled = false;
+          this.bannerKeySaveBtn.textContent = 'Bind Seal';
+        }
+      }
     });
 
     // Starter prompt chips
@@ -426,31 +454,51 @@ export class ChatUI {
     }
   }
 
-  updateKeyStatus({ configured, rejected = false, setupExample = '', message = '' }) {
+  updateKeyStatus({ configured, rejected = false, source = 'none', message = '' }) {
     this.sidebarKeyBadge.classList.remove('connected', 'unbound');
+    this.openKeyHeaderBtn?.classList.remove('bound', 'unbound');
 
     if (configured && !rejected) {
       this.sidebarKeyBadge.classList.add('connected');
-      this.sidebarKeyText.textContent = '.env Groq Seal: Active';
+      this.sidebarKeyText.textContent =
+        source === 'browser' ? 'Groq Seal: Bound (Browser)' : 'Groq Seal: Bound (Server)';
+      this.openKeyHeaderBtn?.classList.add('bound');
+      if (this.headerKeyLabel) this.headerKeyLabel.textContent = 'Key Active';
       this.keyBanner.hidden = true;
+      if (this.bannerKeyInput) {
+        this.bannerKeyInput.value = '';
+        this.bannerKeyInput.type = 'password';
+      }
+      if (this.bannerKeyToggleVis) {
+        this.bannerKeyToggleVis.textContent = 'Show';
+      }
       return;
     }
 
     this.sidebarKeyBadge.classList.add('unbound');
     this.sidebarKeyText.textContent = rejected
-      ? '.env Groq Seal: Rejected (401)'
-      : '.env Groq Seal: Missing Key';
+      ? 'Groq Seal: Rejected (401)'
+      : 'Groq Seal: Enter API Key';
+    this.openKeyHeaderBtn?.classList.add('unbound');
+    if (this.headerKeyLabel) this.headerKeyLabel.textContent = 'Set API Key';
 
     this.keyBanner.hidden = false;
     this.keyBannerTitle.textContent = rejected
       ? 'Astral Seal Fractured — Invalid Groq API Key (401)'
-      : 'Astral Seal Unbound — Missing Groq API Key';
+      : 'Astral Seal Unbound — Enter Your Groq API Key';
 
-    this.keyBannerDesc.innerHTML = message
-      ? escapeHtml(message)
-      : 'Open your local <code>.env</code> file, paste your Groq API key on the line below, save, and restart the server (<code>npm start</code>):';
+    if (message) {
+      this.keyBannerDesc.textContent = message;
+    } else {
+      this.keyBannerDesc.innerHTML =
+        'Paste your Groq API key below to activate the chatbot directly in your browser (saved locally on your device), or create a free key at <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer">console.groq.com/keys</a>:';
+    }
 
-    this.keyBannerSnippet.textContent = setupExample || 'Paste your key into .env';
+    if (rejected && this.bannerKeyInput && !this.bannerKeyInput.value) {
+      this.bannerKeyInput.value = this.store.getUserApiKey();
+    } else if (!rejected && this.bannerKeyInput && !this.store.getUserApiKey()) {
+      this.bannerKeyInput.value = '';
+    }
   }
 
   setStreamingState(streaming) {

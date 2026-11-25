@@ -73,6 +73,7 @@ a,
 }
 
 input[type="text"],
+input[type="password"],
 input[type="number"],
 textarea {
   cursor: text;
@@ -421,15 +422,23 @@ body.webgl-fallback .eclipse-css-fallback {
 }
 
 .key-status-badge {
+  width: 100%;
+  text-align: left;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 7px 10px;
+  padding: 8px 10px;
   border-radius: var(--radius-sm);
   background: rgba(16, 13, 20, 0.9);
   border: 1px solid var(--border-iron);
   font-size: 0.75rem;
   color: var(--text-ash);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.key-status-badge:hover {
+  background: rgba(26, 20, 31, 0.96);
+  border-color: var(--border-steel);
 }
 
 .status-dot {
@@ -619,8 +628,18 @@ body.is-streaming .header-sigil {
   font-weight: 600;
 }
 
+.key-header-btn.bound {
+  border-color: rgba(200, 150, 69, 0.42);
+  color: var(--ember-gold);
+}
+
+.key-header-btn.unbound {
+  border-color: rgba(239, 68, 68, 0.55);
+  color: #fecaca;
+}
+
 /* ==========================================================================
-   Astral Seal Unbound (.env Missing Key Status Banner)
+   Astral Seal Unbound (In-App Groq API Key Setup Banner)
    ========================================================================== */
 
 .seal-banner {
@@ -629,7 +648,7 @@ body.is-streaming .header-sigil {
   display: flex;
   align-items: flex-start;
   gap: 14px;
-  padding: 14px 18px;
+  padding: 15px 18px;
   background: linear-gradient(135deg, rgba(58, 12, 16, 0.84), rgba(16, 12, 19, 0.92));
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -662,52 +681,101 @@ body.is-streaming .header-sigil {
 }
 
 .seal-banner-text {
-  margin: 0 0 10px;
+  margin: 0 0 11px;
   font-size: 0.84rem;
   color: var(--text-secondary);
 }
 
-.seal-banner-text code {
-  font-family: var(--font-mono);
-  font-size: 0.8rem;
-  padding: 1px 5px;
-  background: rgba(6, 5, 8, 0.65);
-  border: 1px solid var(--border-iron);
-  border-radius: 4px;
+.seal-banner-text a,
+.inline-crimson-link {
+  color: #f87171;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.seal-banner-text a:hover,
+.inline-crimson-link:hover {
   color: var(--ember-gold);
 }
 
-.seal-snippet-row {
+.seal-key-form {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 9px;
 }
 
-.seal-code-snippet {
-  font-family: var(--font-mono);
-  font-size: 0.8rem;
-  padding: 6px 11px;
-  background: rgba(6, 5, 8, 0.85);
+.key-input-wrap {
+  flex: 1;
+  min-width: 220px;
+  display: flex;
+  align-items: center;
+  background: rgba(8, 6, 12, 0.92);
   border: 1px solid var(--border-steel);
-  border-radius: var(--radius-sm);
-  color: #fde68a;
-  user-select: all;
+  border-radius: var(--radius-md);
+  padding-right: 6px;
+  transition: border-color 0.15s ease;
 }
 
-.btn-secondary-sm {
-  padding: 6px 12px;
-  font-size: 0.78rem;
-  font-weight: 600;
+.key-input-wrap:focus-within {
+  border-color: var(--crimson-brand);
+}
+
+.key-input-wrap input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 11px;
+  background: transparent !important;
+  border: none !important;
+  outline: none;
   color: var(--text-parchment);
-  background: rgba(185, 28, 28, 0.32);
-  border: 1px solid rgba(239, 68, 68, 0.55);
-  border-radius: var(--radius-sm);
-  transition: all 0.15s ease;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
 }
 
-.btn-secondary-sm:hover {
-  background: rgba(185, 28, 28, 0.52);
+.key-vis-btn {
+  padding: 4px 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-ash);
+  background: rgba(29, 23, 35, 0.85);
+  border: 1px solid var(--border-iron);
+  border-radius: var(--radius-sm);
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.key-vis-btn:hover {
+  color: var(--text-parchment);
+  border-color: var(--border-steel);
+}
+
+.seal-bind-btn {
+  height: 36px;
+  padding: 0 16px;
+  white-space: nowrap;
+}
+
+.key-helper-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.btn-clear-key {
+  padding: 2px 7px;
+  font-size: 0.73rem;
+  font-weight: 600;
+  color: #fca5a5;
+  background: rgba(127, 29, 29, 0.22);
+  border: 1px solid rgba(185, 28, 28, 0.45);
+  border-radius: var(--radius-sm);
+}
+
+.btn-clear-key:hover {
+  background: rgba(185, 28, 28, 0.42);
 }
 
 /* ==========================================================================

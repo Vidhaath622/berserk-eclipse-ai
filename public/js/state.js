@@ -8,7 +8,8 @@ const STORAGE_KEYS = {
   SESSIONS: 'eclipse_ai_sessions_v1',
   ACTIVE_SESSION: 'eclipse_ai_active_session_v1',
   SETTINGS: 'eclipse_ai_settings_v1',
-  SIDEBAR_COLLAPSED: 'eclipse_ai_sidebar_collapsed_v1'
+  SIDEBAR_COLLAPSED: 'eclipse_ai_sidebar_collapsed_v1',
+  USER_API_KEY: 'eclipse_ai_user_api_key_v1'
 };
 
 function generateId(prefix = 'id') {
@@ -85,6 +86,30 @@ class ChatStore {
     }
 
     this.sidebarCollapsed = localStorage.getItem(STORAGE_KEYS.SIDEBAR_COLLAPSED) === 'true';
+    this.userApiKey = (localStorage.getItem(STORAGE_KEYS.USER_API_KEY) || '').trim();
+  }
+
+  getUserApiKey() {
+    return (this.userApiKey || '').trim();
+  }
+
+  hasUserApiKey() {
+    return Boolean(this.getUserApiKey());
+  }
+
+  setUserApiKey(rawKey) {
+    const clean = String(rawKey || '').trim();
+    this.userApiKey = clean;
+    try {
+      if (clean) {
+        localStorage.setItem(STORAGE_KEYS.USER_API_KEY, clean);
+      } else {
+        localStorage.removeItem(STORAGE_KEYS.USER_API_KEY);
+      }
+    } catch (err) {
+      console.warn('Unable to persist API key to localStorage:', err);
+    }
+    this.notify('apikey');
   }
 
   buildBlankSession() {

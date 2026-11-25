@@ -1,18 +1,20 @@
 /**
  * Customize & Settings Drawer Controller
- * Persists chatbot identity, Berserk/daily-driver personas, generation params,
- * and 3D WebGL atmosphere intensity to localStorage via store.
+ * Persists user Groq API key, chatbot identity, Berserk/daily-driver personas,
+ * generation params, and 3D WebGL atmosphere intensity to localStorage via store.
  */
 
 import { PERSONA_PRESETS } from './config.js';
 
 export class SettingsController {
-  constructor({ store, onAtmospherePreview, getServerDefaultModel }) {
+  constructor({ store, onAtmospherePreview, onApiKeyChanged, getServerDefaultModel }) {
     this.store = store;
     this.onAtmospherePreview = onAtmospherePreview;
+    this.onApiKeyChanged = onApiKeyChanged;
     this.getServerDefaultModel = getServerDefaultModel;
     this.isOpen = false;
     this.pendingAtmosphere = store.getSettings().atmosphere;
+    this.keyStatusMeta = { configured: false, rejected: false, source: 'none' };
 
     this.cacheDom();
     this.populatePersonaOptions();
@@ -24,10 +26,17 @@ export class SettingsController {
     this.drawer = document.getElementById('settings-drawer');
     this.backdrop = document.getElementById('settings-backdrop');
     this.openBtn = document.getElementById('open-settings-btn');
+    this.openKeyHeaderBtn = document.getElementById('open-key-settings-btn');
+    this.sidebarKeyBadge = document.getElementById('sidebar-key-badge');
     this.personaPillBtn = document.getElementById('composer-persona-pill');
     this.closeBtn = document.getElementById('close-settings-btn');
     this.form = document.getElementById('settings-form');
     this.resetBtn = document.getElementById('reset-settings-btn');
+
+    this.apiKeyInput = document.getElementById('setting-api-key');
+    this.apiKeyToggleVisBtn = document.getElementById('setting-key-toggle-vis');
+    this.clearKeyBtn = document.getElementById('setting-clear-key-btn');
+    this.keyStatusPill = document.getElementById('setting-key-status-pill');
 
     this.botNameInput = document.getElementById('setting-bot-name');
     this.botSubtitleInput = document.getElementById('setting-bot-subtitle');
@@ -51,10 +60,26 @@ export class SettingsController {
   }
 
   bindEvents() {
-    this.openBtn?.addEventListener('click', () => this.open());
-    this.personaPillBtn?.addEventListener('click', () => this.open());
+    this.openBtn?.addEventListener('click', () => this.open({ focusKey: false }));
+    this.openKeyHeaderBtn?.addEventListener('click', () => this.open({ focusKey: true }));
+    this.sidebarKeyBadge?.addEventListener('click', () => this.open({ focusKey: true }));
+    this.personaPillBtn?.addEventListener('click', () => this.open({ focusKey: false }));
     this.closeBtn?.addEventListener('click', () => this.close());
     this.backdrop?.addEventListener('click', () => this.close());
+
+    this.apiKeyToggleVisBtn?.addEventListener('click', () => {
+      if (!this.apiKeyInput) return;
+      const isMasked = this.apiKeyInput.type === 'password';
+      this.apiKeyInput.type = isMasked ? 'text' : 'password';
+      this.apiKeyToggleVisBtn.textContent = isMasked ? 'Hide' : 'Show';
+    });
+
+    this.clearKeyBtn?.addEventListener('click', () => {
+      this.apiKeyInput.value = '';
+      this.store.setUserApiKey('');
+      this.clearKeyBtn.hidden = true;
+      this.onApiKeyChanged?.('');
+    });
 
     this.personaSelect?.addEventListener('change', () => {
       const selected = PERSONA_PRESETS.find((p) => p.id === this.personaSelect.value);
@@ -110,8 +135,43 @@ export class SettingsController {
     });
   }
 
+  setKeyStatusMeta({ configured, rejected = false, source = 'none' }) {
+    this.keyStatusMeta = { configured, rejected, source };
+    this.renderKeyStatusPill();
+  }
+
+  renderKeyStatusPill() {
+    if (!this.keyStatusPill) return;
+    const { configured, rejected, source } = this.keyStatusMeta;
+    if (configured && !rejected) {
+      this.keyStatusPill.textContent =
+        source === 'browser' ? 'Bound (Browser Key)' : 'Bound (Server .env)';
+      this.keyStatusPill.style.color = '#c89645';
+    } else if (rejected) {
+      this.keyStatusPill.textContent = 'Rejected (401)';
+      this.keyStatusPill.style.color = '#ef4444';
+    } else {
+      this.keyStatusPill.textContent = 'Unbound';
+      this.keyStatusPill.style.color = '#fca5a5';
+    }
+  }
+
   syncFromStore() {
     const s = this.store.getSettings();
+    const savedKey = this.store.getUserApiKey();
+
+    if (this.apiKeyInput) {
+      this.apiKeyInput.value = savedKey;
+      this.apiKeyInput.type = 'password';
+    }
+    if (this.apiKeyToggleVisBtn) {
+      this.apiKeyToggleVisBtn.textContent = 'Show';
+    }
+    if (this.clearKeyBtn) {
+      this.clearKeyBtn.hidden = !savedKey;
+    }
+    this.renderKeyStatusPill();
+
     this.botNameInput.value = s.botName || '';
     this.botSubtitleInput.value = s.botSubtitle || '';
     this.userNameInput.value = s.userName || '';
@@ -140,6 +200,14 @@ export class SettingsController {
   }
 
   save() {
+    const previousKey = this.store.getUserApiKey();
+    const nextKey = (this.apiKeyInput?.value || '').trim();
+    const keyChanged = nextKey !== previousKey;
+
+    if (keyChanged) {
+      this.store.setUserApiKey(nextKey);
+    }
+
     const customModel = (this.customModelInput.value || '').trim();
     const currentSettings = this.store.getSettings();
 
@@ -163,15 +231,25 @@ export class SettingsController {
 
     this.store.updateSettings(patch);
     this.close({ saved: true });
+
+    if (keyChanged) {
+      this.onApiKeyChanged?.(nextKey);
+    }
   }
 
-  open() {
+  open({ focusKey = false } = {}) {
     this.syncFromStore();
     this.isOpen = true;
     this.backdrop.hidden = false;
     this.drawer.classList.add('open');
     this.drawer.setAttribute('aria-hidden', 'false');
-    setTimeout(() => this.botNameInput?.focus(), 60);
+    setTimeout(() => {
+      if (focusKey || !this.keyStatusMeta.configured) {
+        this.apiKeyInput?.focus();
+      } else {
+        this.botNameInput?.focus();
+      }
+    }, 60);
   }
 
   close({ saved = false } = {}) {
@@ -182,7 +260,6 @@ export class SettingsController {
     this.backdrop.hidden = true;
 
     if (!saved) {
-      // Revert unsaved atmosphere preview back to stored value
       const storedLevel = this.store.getSettings().atmosphere;
       this.onAtmospherePreview?.(storedLevel);
     }

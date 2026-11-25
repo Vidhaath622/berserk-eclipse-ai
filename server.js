@@ -43,6 +43,18 @@ function getGroqApiKey() {
   return raw;
 }
 
+function resolveGroqKeyInfo(req) {
+  const headerKey = (req.get('x-groq-api-key') || '').trim();
+  if (headerKey) {
+    return { apiKey: headerKey, source: 'browser' };
+  }
+  const envKey = getGroqApiKey();
+  if (envKey) {
+    return { apiKey: envKey, source: 'server' };
+  }
+  return { apiKey: '', source: 'none' };
+}
+
 function getDefaultModel() {
   return (process.env.GROQ_DEFAULT_MODEL || '').trim() || 'llama-3.3-70b-versatile';
 }
@@ -103,33 +115,34 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 /**
  * GET /api/health
- * Lightweight readiness & .env key configuration check (never exposes the key).
+ * Lightweight readiness & key configuration check (never exposes any key).
  */
-app.get('/api/health', (_req, res) => {
-  const groqKeyConfigured = Boolean(getGroqApiKey());
+app.get('/api/health', (req, res) => {
+  const { apiKey, source } = resolveGroqKeyInfo(req);
   res.json({
     ok: true,
-    groqKeyConfigured,
-    defaultModel: getDefaultModel(),
-    setupExample: ENV_SETUP_EXAMPLE
+    groqKeyConfigured: Boolean(apiKey),
+    serverKeyConfigured: Boolean(getGroqApiKey()),
+    keySource: source,
+    defaultModel: getDefaultModel()
   });
 });
 
 /**
  * GET /api/models
- * Queries Groq /openai/v1/models and filters active text/chat models.
- * Falls back gracefully when GROQ_API_KEY is missing or unreachable.
+ * Queries Groq /openai/v1/models using either the browser-supplied key or server .env key.
  */
-app.get('/api/models', async (_req, res) => {
-  const apiKey = getGroqApiKey();
+app.get('/api/models', async (req, res) => {
+  const { apiKey, source } = resolveGroqKeyInfo(req);
   const defaultModel = getDefaultModel();
 
   if (!apiKey) {
     return res.json({
       models: FALLBACK_MODELS,
       keyConfigured: false,
-      defaultModel,
-      setupExample: ENV_SETUP_EXAMPLE
+      keyRejected: false,
+      keySource: 'none',
+      defaultModel
     });
   }
 
@@ -150,9 +163,10 @@ app.get('/api/models', async (_req, res) => {
       return res.json({
         models: FALLBACK_MODELS,
         keyConfigured: false,
+        keyRejected: true,
+        keySource: source,
         defaultModel,
-        setupExample: ENV_SETUP_EXAMPLE,
-        warning: 'Groq rejected the configured API key (401 Unauthorized).'
+        warning: 'Groq rejected this API key (401 Unauthorized). Check that your gsk_... key is valid and active.'
       });
     }
 
@@ -160,6 +174,8 @@ app.get('/api/models', async (_req, res) => {
       return res.json({
         models: FALLBACK_MODELS,
         keyConfigured: true,
+        keyRejected: false,
+        keySource: source,
         defaultModel,
         warning: `Using fallback model list (Groq models endpoint HTTP ${upstream.status}).`
       });
@@ -196,12 +212,16 @@ app.get('/api/models', async (_req, res) => {
     return res.json({
       models: filtered.length > 0 ? filtered : FALLBACK_MODELS,
       keyConfigured: true,
+      keyRejected: false,
+      keySource: source,
       defaultModel
     });
   } catch (err) {
     return res.json({
       models: FALLBACK_MODELS,
       keyConfigured: true,
+      keyRejected: false,
+      keySource: source,
       defaultModel,
       warning: `Could not reach Groq model catalog (${err.name === 'AbortError' ? 'timeout' : 'network error'}); showing fallback models.`
     });
@@ -215,14 +235,13 @@ app.get('/api/models', async (_req, res) => {
  * Streams Groq chat completions back to the browser via Server-Sent Events (SSE).
  */
 app.post('/api/chat', async (req, res) => {
-  const apiKey = getGroqApiKey();
+  const { apiKey } = resolveGroqKeyInfo(req);
   if (!apiKey) {
     return res.status(401).json({
       error:
-        'Astral Seal Unbound — Your Groq API key is missing in .env. Paste your key into .env and restart the server.',
+        'Astral Seal Unbound — Enter your Groq API key in the banner above or open Customize → Astral Seal to start chatting.',
       code: 'MISSING_API_KEY',
-      keyMissing: true,
-      setupExample: ENV_SETUP_EXAMPLE
+      keyMissing: true
     });
   }
 
@@ -317,10 +336,9 @@ app.post('/api/chat', async (req, res) => {
 
       if (upstream.status === 401 || upstream.status === 403) {
         return res.status(401).json({
-          error: `Astral Seal Rejected (401) — ${errMessage} Verify your key in .env and restart the server.`,
+          error: `Astral Seal Rejected (401) — ${errMessage} Check or update your Groq API key in the banner or Customize drawer.`,
           code: 'INVALID_API_KEY',
-          keyMissing: true,
-          setupExample: ENV_SETUP_EXAMPLE
+          keyMissing: true
         });
       }
 
