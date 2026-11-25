@@ -1,0 +1,24 @@
+{
+  "name": "berserk-eclipse-ai",
+  "version": "1.0.0",
+  "description": "Personal AI chatbot powered by Groq with a Berserk dark-fantasy aesthetic and procedural 3D WebGL visuals",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "build": "node scripts/copy-vendor.js",
+    "postinstall": "node scripts/copy-vendor.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "@highlightjs/cdn-assets": "^11.11.1",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "highlight.js": "^11.11.1",
+    "marked": "^15.0.7",
+    "three": "^0.174.0"
+  }
+}

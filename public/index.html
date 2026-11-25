@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="dark" />
+  <title>ECLIPSE AI — Personal Astral Companion</title>
+
+  <!-- Google Fonts with crisp local fallbacks -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+
+  <!-- Inline SVG Brand Favicon -->
+  <link
+    rel="icon"
+    type="image/svg+xml"
+    href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%2309070c'/%3E%3Cpath d='M32 7v49M32 56L17 38l30-21L32 8 17 17l30 21-15 18zM24 7l8 7 8-7' fill='none' stroke='%23ef4444' stroke-width='3.6' stroke-linecap='square' stroke-linejoin='miter'/%3E%3C/svg%3E"
+  />
+
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+  <!-- Fixed 3D WebGL Scene & Layered Fallbacks (strictly pointer-events: none) -->
+  <canvas id="berserk-canvas" aria-hidden="true"></canvas>
+  <div class="eclipse-css-fallback" aria-hidden="true"></div>
+  <div class="ink-vignette-overlay" aria-hidden="true"></div>
+
+  <!-- Reusable SVG Symbols (100% procedural inline emblems) -->
+  <svg width="0" height="0" style="position:absolute;overflow:hidden" aria-hidden="true">
+    <defs>
+      <!-- Iconic Berserk Brand of Sacrifice -->
+      <symbol id="icon-brand" viewBox="0 0 64 80">
+        <path
+          d="M32 8 L32 73 M32 73 L13 50 L51 23 L32 9 L13 23 L51 50 Z M23 5 L32 13 L41 5 M23 36.5 L41 36.5"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="4.2"
+          stroke-linecap="square"
+          stroke-linejoin="miter"
+        />
+      </symbol>
+
+      <!-- Blood Eclipse Crest -->
+      <symbol id="icon-eclipse" viewBox="0 0 64 64">
+        <circle cx="32" cy="32" r="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-dasharray="3 3" opacity="0.55" />
+        <circle cx="32" cy="32" r="18" fill="#060508" stroke="currentColor" stroke-width="2.8" />
+        <path d="M14 32a18 18 0 0 1 36 0" fill="none" stroke="#ef4444" stroke-width="3.4" opacity="0.85" />
+      </symbol>
+
+      <!-- Dragon Slayer Sword Divider -->
+      <symbol id="icon-sword-divider" viewBox="0 0 320 24">
+        <line x1="6" y1="12" x2="108" y2="12" stroke="currentColor" stroke-width="1" opacity="0.45" />
+        <polygon points="116,12 126,9 194,9 208,12 194,15 126,15" fill="currentColor" opacity="0.82" />
+        <rect x="111" y="6.5" width="5" height="11" rx="1" fill="currentColor" />
+        <rect x="96" y="10" width="15" height="4" fill="currentColor" opacity="0.9" />
+        <circle cx="93" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8" />
+        <line x1="214" y1="12" x2="314" y2="12" stroke="currentColor" stroke-width="1" opacity="0.45" />
+      </symbol>
+    </defs>
+  </svg>
+
+  <div id="app-shell" class="app-shell">
+    <!-- Mobile Slide-Out Backdrop -->
+    <div id="mobile-backdrop" class="mobile-backdrop" hidden></div>
+
+    <!-- Left Multi-Thread Chronicles Sidebar -->
+    <aside id="sidebar" class="sidebar" aria-label="Saved Chronicles">
+      <div class="sidebar-top">
+        <div class="sidebar-crest">
+          <span class="brand-badge-sm" aria-hidden="true">
+            <svg width="18" height="22"><use href="#icon-brand"></use></svg>
+          </span>
+          <span class="sidebar-heading">CHRONICLES</span>
+        </div>
+        <button
+          id="sidebar-close-mobile"
+          type="button"
+          class="icon-btn mobile-only"
+          aria-label="Close sidebar"
+          title="Close sidebar"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6L6 18M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="sidebar-new-wrap">
+        <button id="new-chat-btn" type="button" class="btn-new-chronicle">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+          <span>New Chronicle</span>
+        </button>
+      </div>
+
+      <div id="session-list" class="session-list" role="list" aria-label="Conversation history"></div>
+
+      <div class="sidebar-footer">
+        <div class="sidebar-tools-row">
+          <button id="export-md-btn" type="button" class="tool-chip-btn" title="Export active chronicle as Markdown (.md)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            <span>.MD</span>
+          </button>
+          <button id="export-json-btn" type="button" class="tool-chip-btn" title="Export active chronicle as JSON (.json)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+            </svg>
+            <span>.JSON</span>
+          </button>
+          <button id="clear-history-btn" type="button" class="tool-chip-btn tool-chip-danger" title="Clear all saved chronicles">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <polyline points="3 6 5 6 21 6" />
+              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+            </svg>
+            <span>Purge</span>
+          </button>
+        </div>
+
+        <div id="sidebar-key-badge" class="key-status-badge" role="status" aria-live="polite">
+          <span id="sidebar-key-dot" class="status-dot"></span>
+          <span id="sidebar-key-text" class="key-status-label">Checking .env Seal…</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Foreground Chat Workspace -->
+    <div class="workspace">
+      <!-- Top Header Bar -->
+      <header class="chat-header">
+        <div class="header-left">
+          <button
+            id="sidebar-toggle-btn"
+            type="button"
+            class="icon-btn"
+            aria-label="Toggle Chronicles Sidebar"
+            title="Toggle Chronicles Sidebar"
+          >
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9">
+              <rect x="3" y="4" width="18" height="16" rx="2" />
+              <line x1="9" y1="4" x2="9" y2="20" />
+            </svg>
+          </button>
+
+          <div class="header-identity">
+            <div class="header-sigil" aria-hidden="true">
+              <svg width="22" height="28"><use href="#icon-brand"></use></svg>
+            </div>
+            <div class="header-titles">
+              <h1 id="header-bot-name" class="bot-title">ECLIPSE AI</h1>
+              <p id="header-bot-subtitle" class="bot-subtitle">Chronicles of the Astral Rift • Personal AI</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="header-controls">
+          <div class="model-selector-group">
+            <label for="model-select" class="sr-only">Groq Model</label>
+            <select id="model-select" class="model-select" title="Select Groq Model"></select>
+            <input
+              id="header-custom-model"
+              type="text"
+              class="custom-model-inline"
+              placeholder="Enter Groq model ID…"
+              aria-label="Custom Groq Model ID"
+              hidden
+            />
+          </div>
+
+          <button
+            id="atmosphere-toggle-btn"
+            type="button"
+            class="pill-btn"
+            title="Cycle 3D WebGL Atmosphere (Full / Subtle / Static)"
+          >
+            <svg width="14" height="14" viewBox="0 0 64 64" aria-hidden="true">
+              <use href="#icon-eclipse"></use>
+            </svg>
+            <span class="hide-xs">3D:</span>
+            <strong id="atmosphere-label">Full</strong>
+          </button>
+
+          <button
+            id="open-settings-btn"
+            type="button"
+            class="icon-btn settings-trigger-btn"
+            aria-label="Customize &amp; Settings"
+            title="Customize Chatbot &amp; Persona"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.604.852.997 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+            <span class="hide-sm">Customize</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Atmospheric Missing / Rejected .env API Key Banner -->
+      <section id="api-key-banner" class="seal-banner" role="alert" hidden>
+        <div class="seal-banner-icon" aria-hidden="true">
+          <svg width="24" height="30"><use href="#icon-brand"></use></svg>
+        </div>
+        <div class="seal-banner-body">
+          <h2 id="api-key-banner-title" class="seal-banner-title">
+            Astral Seal Unbound — Missing Groq API Key
+          </h2>
+          <p id="api-key-banner-desc" class="seal-banner-text">
+            Open your local <code>.env</code> file in the project root, paste your Groq key on the line below, and restart the server (<code>npm start</code>):
+          </p>
+          <div class="seal-snippet-row">
+            <code id="api-key-banner-snippet" class="seal-code-snippet">.env → paste your Groq API key</code>
+            <button id="recheck-key-btn" type="button" class="btn-secondary-sm">
+              Re-check Seal
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Scrollable Conversation Viewport -->
+      <main id="chat-viewport" class="chat-viewport">
+        <!-- Empty / Welcome State -->
+        <section id="welcome-screen" class="welcome-screen">
+          <div class="welcome-emblem-cluster" aria-hidden="true">
+            <svg class="welcome-eclipse-ring" width="92" height="92"><use href="#icon-eclipse"></use></svg>
+            <svg class="welcome-brand-mark" width="38" height="48"><use href="#icon-brand"></use></svg>
+          </div>
+
+          <h2 id="welcome-title" class="welcome-title">ECLIPSE AI</h2>
+          <p id="welcome-greeting" class="welcome-greeting">
+            Greetings, Struggler. What problem shall we cleave through today?
+          </p>
+
+          <div class="sword-divider" aria-hidden="true">
+            <svg width="280" height="22"><use href="#icon-sword-divider"></use></svg>
+          </div>
+
+          <div id="starter-prompts-grid" class="starter-grid" role="list"></div>
+        </section>
+
+        <!-- Active Conversation Stream -->
+        <div id="message-list" class="message-list" aria-live="polite"></div>
+      </main>
+
+      <!-- Smart Scroll Jump-to-Latest Button -->
+      <button id="jump-latest-btn" type="button" class="jump-latest-btn" hidden>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+          <path d="M12 5v14M19 12l-7 7-7-7" />
+        </svg>
+        <span>Jump to latest</span>
+      </button>
+
+      <!-- Bottom Prompt Composer -->
+      <footer class="composer-area">
+        <div class="composer-shell">
+          <div class="composer-meta-bar">
+            <div class="composer-pills">
+              <button
+                id="composer-persona-pill"
+                type="button"
+                class="meta-pill meta-pill-interactive"
+                title="Active Persona — Click to change in Settings"
+              >
+                <span class="pill-dot"></span>
+                <span>Oath:</span>
+                <strong id="composer-persona-name">Daily Companion</strong>
+              </button>
+              <span class="meta-pill" title="Sampling Temperature">
+                Temp <strong id="composer-temp-val">0.7</strong>
+              </span>
+            </div>
+            <span id="composer-status-hint" class="composer-status-hint" aria-live="polite"></span>
+          </div>
+
+          <form id="composer-form" class="composer-box">
+            <textarea
+              id="prompt-input"
+              class="composer-textarea"
+              rows="1"
+              placeholder="Inscribe your prompt… (Enter to send, Shift+Enter for newline)"
+              aria-label="Prompt message"
+            ></textarea>
+
+            <div class="composer-actions">
+              <button
+                id="stop-stream-btn"
+                type="button"
+                class="btn-stop"
+                hidden
+                title="Stop generating response"
+              >
+                <span class="stop-square" aria-hidden="true"></span>
+                <span>Stop</span>
+              </button>
+
+              <button
+                id="send-btn"
+                type="submit"
+                class="btn-send"
+                aria-label="Send prompt"
+                title="Send prompt (Enter)"
+              >
+                <span>Invoke</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <line x1="22" y1="2" x2="11" y2="13"></line>
+                  <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+              </button>
+            </div>
+          </form>
+        </div>
+      </footer>
+    </div>
+  </div>
+
+  <!-- Customize & Settings Slide-Over Drawer -->
+  <div id="settings-backdrop" class="drawer-backdrop" hidden></div>
+  <aside
+    id="settings-drawer"
+    class="settings-drawer"
+    aria-label="Customize Chatbot Settings"
+    aria-hidden="true"
+  >
+    <div class="drawer-header">
+      <div class="drawer-title-group">
+        <svg width="20" height="25" class="drawer-brand-icon" aria-hidden="true">
+          <use href="#icon-brand"></use>
+        </svg>
+        <div>
+          <h2 class="drawer-title">Forge &amp; Astral Oath</h2>
+          <p class="drawer-subtitle">Personalize identity, persona, parameters &amp; 3D visuals</p>
+        </div>
+      </div>
+      <button id="close-settings-btn" type="button" class="icon-btn" aria-label="Close Settings">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6L6 18M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+
+    <form id="settings-form" class="drawer-body">
+      <div class="field-section">
+        <h3 class="section-eyebrow">Identity</h3>
+        <div class="field-grid-2">
+          <div class="field-group">
+            <label for="setting-bot-name">Chatbot Name</label>
+            <input id="setting-bot-name" type="text" maxlength="40" required />
+          </div>
+          <div class="field-group">
+            <label for="setting-user-name">Your Display Name</label>
+            <input id="setting-user-name" type="text" maxlength="32" required />
+          </div>
+        </div>
+        <div class="field-group">
+          <label for="setting-bot-subtitle">Header Subtitle</label>
+          <input id="setting-bot-subtitle" type="text" maxlength="80" />
+        </div>
+      </div>
+
+      <div class="field-section">
+        <h3 class="section-eyebrow">Persona &amp; System Oath</h3>
+        <div class="field-group">
+          <label for="setting-persona-select">Persona Preset</label>
+          <select id="setting-persona-select"></select>
+          <p id="setting-persona-desc" class="field-hint"></p>
+        </div>
+        <div class="field-group">
+          <label for="setting-system-prompt">System Prompt</label>
+          <textarea id="setting-system-prompt" rows="5" maxlength="8000"></textarea>
+        </div>
+      </div>
+
+      <div class="field-section">
+        <h3 class="section-eyebrow">Groq Generation Parameters</h3>
+        <div class="field-group">
+          <div class="label-row">
+            <label for="setting-temperature">Temperature</label>
+            <span id="setting-temp-display" class="value-readout">0.70</span>
+          </div>
+          <input
+            id="setting-temperature"
+            type="range"
+            min="0"
+            max="1.5"
+            step="0.05"
+            value="0.7"
+          />
+          <div class="range-captions">
+            <span>0.0 Precise</span>
+            <span>0.7 Balanced</span>
+            <span>1.5 Wild</span>
+          </div>
+        </div>
+
+        <div class="field-grid-2">
+          <div class="field-group">
+            <label for="setting-max-tokens">Max Tokens (256 – 8192)</label>
+            <input id="setting-max-tokens" type="number" min="256" max="8192" step="128" />
+          </div>
+          <div class="field-group">
+            <label for="setting-custom-model">Custom Model ID (Optional)</label>
+            <input id="setting-custom-model" type="text" placeholder="e.g. qwen-qwq-32b" />
+          </div>
+        </div>
+      </div>
+
+      <div class="field-section">
+        <h3 class="section-eyebrow">3D WebGL Eclipse Atmosphere</h3>
+        <div class="segmented-control" role="radiogroup" aria-label="3D Scene Intensity">
+          <button type="button" class="segment-btn" data-atmosphere-choice="full">
+            <strong>Full</strong>
+            <span>60fps Corona &amp; Embers</span>
+          </button>
+          <button type="button" class="segment-btn" data-atmosphere-choice="subtle">
+            <strong>Subtle</strong>
+            <span>Calm Low-Motion</span>
+          </button>
+          <button type="button" class="segment-btn" data-atmosphere-choice="static">
+            <strong>Static</strong>
+            <span>Zero-Motion Frame</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="drawer-footer">
+        <button id="reset-settings-btn" type="button" class="btn-ghost">
+          Reset Defaults
+        </button>
+        <button id="save-settings-btn" type="submit" class="btn-primary">
+          Seal Changes
+        </button>
+      </div>
+    </form>
+  </aside>
+
+  <!-- Custom Accessible Dialog Modal (Rename Chronicle / Confirm Purge) -->
+  <div id="dialog-backdrop" class="dialog-backdrop" hidden>
+    <div id="dialog-box" class="dialog-box" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
+      <h3 id="dialog-title" class="dialog-title">Rename Chronicle</h3>
+      <p id="dialog-message" class="dialog-message"></p>
+      <input id="dialog-input" type="text" class="dialog-input" maxlength="80" hidden />
+      <div class="dialog-actions">
+        <button id="dialog-cancel-btn" type="button" class="btn-ghost">Cancel</button>
+        <button id="dialog-confirm-btn" type="button" class="btn-primary">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/js/main.js"></script>
+</body>
+</html>
